@@ -25,15 +25,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Success Criteria** (what must be TRUE):
   1. After running `./scripts/install.bat` and `/reload` in WoW, the addon loads and prints a colored `TerribleLuraHelper loaded.` banner in chat — no errors, no missing-file warnings, no unrecognized-addon entry.
   2. The repo's working state lives on a `milestone/0.1.0` branch (created from `main` and pushed); `main` is untouched until squash-merge.
-  3. After a `/reload` round-trip, `TerribleLuraHelperDB` exists in `WTF/Account/.../SavedVariables/TerribleLuraHelperDB.lua` populated with the v1 default keys (channels table with all six set to `true`, `scale = 1.00`, `autoHide = false`, `locked = true`, `enabled = false`).
-  4. Pushing a tag of the form `v0.0.1` triggers the `release.yml` GitHub Actions workflow, which runs BigWigs Packager and produces a CurseForge/Wago/GitHub release ZIP whose root folder is named `TerribleLuraHelper`.
+  3. After a `/reload` round-trip, `TerribleLuraHelperDB` exists in `WTF/Account/.../SavedVariables/TerribleLuraHelperDB.lua` populated with the v1 default keys per CONTEXT.md D-03 grouped schema (`enabled = false`; `listenChannels` table with all six channels = `true`; `window = { scale = 1.00, locked = true, autoHide = false, position = nil }`; `sequence = {}`).
+  4. **Per CONTEXT.md D-06, Phase 1 does NOT push a v0.0.1 tag.** Instead: `release.yml` is committed with the CHANGELOG-cutoff awk present, and `scripts/release.bat <version>` works from any branch (D-08 — parameterized push to current branch, not hardcoded `main`). The pipeline's first live exercise is the v0.1.0 milestone-merge tag.
   5. `CLAUDE.md` exists at the repo root and documents: the chat-lockdown / no-msg-processing / no-`SendChatMessage` hard constraints, the `milestone/<version>` + squash-merge workflow rule, the `stylua` formatting rule, the architecture file map, and the wow-ui-source style reference path.
-**Plans**: TBD
+
+**Plans:** 3 plans
+- [ ] 01-01-PLAN.md — Open milestone/0.1.0 branch + repo skeleton (.gitignore, .luarc.json, LICENSE, README, CHANGELOG, verify CLAUDE.md)
+- [ ] 01-02-PLAN.md — Addon scaffolding (.toc, Core.lua with grouped DB schema, stub Macros/Window/Config modules)
+- [ ] 01-03-PLAN.md — Release pipeline (.pkgmeta, GHA workflow with CHANGELOG cutoff, install.bat, release.bat with current-branch fix)
 
 ### Phase 2: POC Port (Macros, Window, Commands)
 **Goal**: Every behavior proven in `WeakerScripts/Samples/LuraPatternHelper.lua` runs inside the standalone addon, plus the new `/lura hide` = "disable processing entirely" semantics that the POC doesn't have. The five rune slots fill in arrival order during boss combat without violating any taint constraint.
 **Depends on**: Phase 1
-**Requirements**: MACR-01, MACR-02, MACR-03, MACR-04, MACR-05, WIN-01, WIN-02, WIN-03, WIN-04, WIN-05, WIN-06, WIN-07, CMD-01, CMD-02, CMD-03, CMD-04, CMD-06, SAFE-01, SAFE-02, SAFE-03, SAFE-04
+**Requirements**: MACR-01, MACR-02, MACR-03, MACR-04, MACR-05, WIN-01, WIN-02, WIN-03, WIN-04, WIN-05, WIN-06, WIN-07, WIN-09, CMD-01, CMD-02, CMD-03, CMD-04, CMD-06, SAFE-01, SAFE-02, SAFE-03, SAFE-04
 **Success Criteria** (what must be TRUE):
   1. On first login (out of combat), opening `/macro` shows five player macros named `TLH_Diamond`, `TLH_Triangle`, `TLH_Circle`, `TLH_Cross`, `TLH_T` with raid-marker icons; logging in mid-combat creates them on the next `PLAYER_REGEN_ENABLED`; subsequent logins update them in place (no duplicates).
   2. After `/lura show` during a raid combat encounter, pressing the five dragged-to-action-bar macros in order fills slots 1 through 5 of the smile-arc display with the corresponding raid-marker icons (rendered via `C_ChatInfo.ReplaceIconAndGroupExpressions`); a 6th press clears all and refills at slot 1; 15 seconds of silence self-clears the display; the sequence persists across `/reload`.
@@ -63,6 +67,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Scaffolding & Foundation | 0/TBD | Not started | - |
+| 1. Scaffolding & Foundation | 0/3 | Not started | - |
 | 2. POC Port (Macros, Window, Commands) | 0/TBD | Not started | - |
 | 3. Config Panel & Integration | 0/TBD | Not started | - |
