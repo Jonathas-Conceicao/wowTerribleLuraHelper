@@ -9,7 +9,7 @@
 
 - [ ] **SCAF-01**: `.toc` declares `Interface 120005`, `TerribleLuraHelperDB` SavedVariables, BigWigs packager hooks (`@project-version@`, optional `X-Curse-Project-ID` / `X-Wago-ID`), and lists every Lua file in load order
 - [ ] **SCAF-02**: Namespace pattern `local addonName, ns = ...` is shared across all Lua files (matches TerribleBuffTracker)
-- [ ] **SCAF-03**: SavedVariables key `TerribleLuraHelperDB` is initialized on `ADDON_LOADED` with default values for every config option (channels, scale, auto-hide, lock state, enabled state)
+- [ ] **SCAF-03**: SavedVariables key `TerribleLuraHelperDB` is initialized on `ADDON_LOADED` with the grouped default schema: `enabled=false`, `listenChannels.{SAY,RAID,RAID_LEADER,RAID_WARNING,INSTANCE_CHAT,INSTANCE_CHAT_LEADER}=true`, `window={scale=1.00, locked=true, autoHide=false, position=nil}`, `sequence={}`. Backfills new keys on existing DBs (matches TBT pattern).
 - [ ] **SCAF-04**: `.pkgmeta` configures BigWigs Packager with `package-as: TerribleLuraHelper`, manual changelog from `RELEASE_NOTES.md`, and ignore list (gitignore, pkgmeta, CHANGELOG, CLAUDE, README, LICENSE, scripts, png, RELEASE_NOTES)
 - [ ] **SCAF-05**: `.gitignore` excludes `*.zip`, `.claude/`, and emacs swap files (mirrors TBT)
 - [ ] **SCAF-06**: `.luarc.json` configures Lua 5.1 runtime and `vscode-wow-api` workspace library
@@ -38,6 +38,7 @@
 - [ ] **WIN-06**: Slot display self-clears 15 seconds after the most recent chat message (timer hardcoded for v1)
 - [ ] **WIN-07**: Sequence persists across `/reload` so the display is restored on the next load (the addon must store the post-processed strings opaquely — never indexed by Lua)
 - [ ] **WIN-08**: Window scale honors the configured scale value (range 0.50–2.00, default 1.00) and updates live when the slider changes
+- [ ] **WIN-09**: Window position persists across `/reload` and full game-session restarts — written to `db.window.position` on drag-end and re-applied on first show; defaults to `CENTER UIParent CENTER 200 80` when no saved position exists
 
 ### Behavior States (Slash Commands)
 
@@ -115,6 +116,7 @@
 | WIN-06 | Phase 2 | Pending |
 | WIN-07 | Phase 2 | Pending |
 | WIN-08 | Phase 3 | Pending |
+| WIN-09 | Phase 2 | Pending |
 | CMD-01 | Phase 2 | Pending |
 | CMD-02 | Phase 2 | Pending |
 | CMD-03 | Phase 2 | Pending |
@@ -136,15 +138,15 @@
 | SAFE-04 | Phase 2 | Pending |
 
 **Coverage:**
-- v1 requirements: 44 total
-- Mapped to phases: 44 (Phase 1: 12, Phase 2: 21, Phase 3: 11)
+- v1 requirements: 45 total
+- Mapped to phases: 45 (Phase 1: 12, Phase 2: 22, Phase 3: 11)
 - Unmapped: 0
 
 **Phase distribution:**
 - Phase 1 (Scaffolding & Foundation): SCAF-01..12 (12 requirements)
-- Phase 2 (POC Port): MACR-01..05, WIN-01..07, CMD-01..04, CMD-06, SAFE-01..04 (21 requirements)
+- Phase 2 (POC Port): MACR-01..05, WIN-01..07, WIN-09, CMD-01..04, CMD-06, SAFE-01..04 (22 requirements)
 - Phase 3 (Config Panel & Integration): CFG-01..09, CMD-05, WIN-08 (11 requirements)
 
 ---
 *Requirements defined: 2026-04-30*
-*Last updated: 2026-04-30 after roadmap creation (traceability filled in)*
+*Last updated: 2026-04-30 after Phase 1 discuss (added WIN-09 window-position persistence; refined SCAF-03 schema)*
