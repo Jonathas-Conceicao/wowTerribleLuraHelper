@@ -12,7 +12,7 @@ The five runes that L'ura shows must arrive — in the right order — on every 
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ **Project scaffolding (Phase 1)** — `.toc` (Interface 120005, X-Curse-Project-ID 1529832, X-Wago-ID XKqArdKy), `.pkgmeta`, `.gitignore`, `.luarc.json`, `LICENSE` (WTFPL v2), `README.md`, `CHANGELOG.md`, `CLAUDE.md`, `scripts/install.bat`, `scripts/release.bat` (current-branch push fix), `.github/workflows/release.yml` (CHANGELOG-cutoff awk), four-file Lua skeleton (`Core.lua` + `Macros.lua` + `Window.lua` + `Config.lua` stubs), namespace pattern `local addonName, ns = ...`, grouped `TerribleLuraHelperDB` schema with backfill, milestone/0.1.0 branch open. **In-game smoke test passed 2026-04-30** — addon loads with banner, no Lua errors, addon listed.
 
 ### Active
 
@@ -26,39 +26,32 @@ The five runes that L'ura shows must arrive — in the right order — on every 
 - [ ] Five positional slots arranged in a smile-arc around a `BOSS` label, with a `TANK` label opposite slot 3 — slots fill 1→5 in arrival order; a 6th message clears all and restarts at slot 1
 - [ ] Window is movable when unlocked; lock/unlock button on the window itself
 - [ ] Window shows scaled rendering of the raid markers received from chat (rendered via Blizzard's secure chat pipeline — no string processing in addon)
-- [ ] Self-clears after 15 seconds of no new message (timer hardcoded for v1)
-- [ ] Sequence persists across `/reload` so the display is restored after a UI reload
+- [ ] Self-clears after 20 seconds of no new message (timer hardcoded for v1; bumped from 15s during Phase 2 discuss)
+- [ ] Sequence is in-memory only (cleared on `/lura hide`, on 20s inactivity, and on `/reload` — no SavedVariables persistence)
 - [ ] Window is hidden by default and across reloads — never auto-shows; only opens via `/lura` or `/lura show`
 
 #### Behavior states (slash commands)
-- [ ] `/lura show` — enable processing: register chat events during combat, fill slots as messages arrive, show window
-- [ ] `/lura hide` — disable processing: ignore chat events even during combat, hide window
-- [ ] `/lura` (no arg) — toggle between enabled/disabled states
-- [ ] `/lura clear` — clear slot display immediately (does not change enabled/disabled state)
-- [ ] `/tlh` — alias for `/lura`
+- [ ] `/lura show` — enable processing: register chat events during combat, fill slots as messages arrive, show window. Mid-combat enable registers events immediately (per D-23 in Phase 2 CONTEXT).
+- [ ] `/lura hide` — disable processing AND wipe in-memory sequence: ignore chat events even during combat, hide window, clear slots
+- [ ] `/lura` (no arg) — pure toggle between enabled/disabled states
+- [ ] `/lura config` — open Options > AddOns > TerribleLuraHelper page (Phase 3)
+- [ ] `/lura help` — print slash command list to chat
+- [ ] `/tlh` — alias for `/lura` with same subcommands
 
 #### Config panel (Options > AddOns > TerribleLuraHelper)
 - [ ] Per-channel listen toggles: SAY, RAID, RAID_LEADER, RAID_WARNING, INSTANCE, INSTANCE_LEADER
 - [ ] Window scale slider: range 0.50–2.00, default 1.00
+- [ ] Window alpha slider: range 0.20–1.00, default 1.00 (transparency)
 - [ ] Auto-hide-when-empty toggle — when on and the addon is enabled, window hides while sequence is empty (including after the 15s self-clear) and reappears when slot 1 fills; when off, window stays visible the whole time the addon is enabled
 - [ ] "Unlock helper window" button — toggles drag-lock state from the config panel (mirror of the lock button on the window)
 - [ ] "Recreate Macros" button
 - [ ] Read-only command-examples text block listing `/lura show`, `/lura hide`, `/lura clear`, `/tlh`
 
-#### Project scaffolding (mirrors TerribleBuffTracker)
-- [ ] `.toc` with `Interface 120005`, `Author Jonathas-Conceicao`, BigWigs packager hooks (`@project-version@`, `X-Curse-Project-ID`, `X-Wago-ID`)
-- [ ] `.pkgmeta` for BigWigs Packager (CurseForge / Wago / GitHub releases)
-- [ ] `.gitignore`, `.luarc.json` (Lua 5.1 + `vscode-wow-api` library)
-- [ ] `scripts/install.bat` (copy to `_retail_/Interface/AddOns/TerribleLuraHelper`)
-- [ ] `scripts/release.bat <version>` (tag and push, GHA handles packaging)
-- [ ] `.github/workflows/release.yml` (BigWigs Packager on tag push)
-- [ ] `CHANGELOG.md`, `README.md`, `LICENSE`
-- [ ] Namespace pattern `local addonName, ns = ...` shared across files
-- [ ] SavedVariables `TerribleLuraHelperDB` (account-wide) holds: per-channel enabled flags, scale, auto-hide toggle, lock state
-
 ### Out of Scope
 
-- **Configurable inactivity timeout** — explicitly considered; user picked the channel filters / utilities / scale instead. Stays hardcoded at 15s for v1.
+- **Configurable inactivity timeout** — explicitly considered; user picked the channel filters / utilities / scale instead. Stays hardcoded at 20s for v1 (bumped from 15s during Phase 2 discuss).
+- **Sequence persistence across `/reload`** — was originally WIN-07; dropped during Phase 2 discuss in favor of in-memory-only state. Avoids SavedVariables churn for transient combat data; the 20s self-clear handles the use case naturally.
+- **`/lura clear` standalone command** — was originally CMD-04; dropped during Phase 2 discuss. `/lura hide` does a clean wipe + disable; the 20s timer auto-clears between pulls.
 - **Marker-set remapping (which raid marker each rune produces)** — POC ships with a fixed mapping (Diamond/Triangle/Circle/Cross/T → rt3/rt4/rt2/rt7/rt1); not configurable in v1.
 - **Reading or processing chat message text in any way** — Blizzard chat lockdown taints any addon code that indexes, matches, gsubs, concatenates, or measures the `msg` argument. Hard constraint, not a deferral.
 - **Sending chat messages from addon code (including OnClick handlers)** — boss-fight chat lockdown blocks tainted strings. Reason we use user-bound macros instead.
@@ -127,4 +120,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-30 after initialization*
+*Last updated: 2026-04-30 after Phase 1 completion (Scaffolding & Foundation)*

@@ -1,0 +1,9 @@
+*.zip
+
+# Claude Code settings
+.claude/
+
+# Emacs swap files
+.\#*
+\#*
+*.~*

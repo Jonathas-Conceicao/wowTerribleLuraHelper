@@ -1,0 +1,15 @@
+{
+  "Lua.runtime.version": "Lua 5.1",
+  "Lua.workspace.library": [
+    "C:/Users/jonat/Repositories/vscode-wow-api"
+  ],
+  "Lua.diagnostics.globals": [
+    "CreateFrame",
+    "GetTime",
+    "UIParent",
+    "SlashCmdList",
+    "UISpecialFrames",
+    "hooksecurefunc",
+    "C_Spell"
+  ]
+}
