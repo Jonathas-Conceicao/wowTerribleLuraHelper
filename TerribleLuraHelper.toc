@@ -13,3 +13,4 @@ Core.lua
 Macros.lua
 Window.lua
 Config.lua
+templates.xml

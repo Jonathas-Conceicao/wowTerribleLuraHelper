@@ -6,6 +6,20 @@ local addonName, ns = ...
 -- See CLAUDE.md for hard taint constraints — this file MUST NOT register chat
 -- events, index the msg argument from chat events, or emit chat messages. Those live elsewhere.
 
+-- Per-channel defaults for fresh-install AND backfill (SCAF-13, SCAF-15, SAFE-06).
+-- SAY=true is the v1.0.0 default; all other channels off until user opts in.
+-- SAFE-06: backfill MUST use `if db.X == nil then db.X = DEFAULT end` — never
+-- the `or` shorthand, which silently clobbers intentional `false` values.
+-- See .planning/research/PITFALLS.md DB-1 for the full rationale.
+local LISTEN_DEFAULTS = {
+	SAY = true,
+	RAID = false,
+	RAID_LEADER = false,
+	RAID_WARNING = false,
+	INSTANCE_CHAT = false,
+	INSTANCE_CHAT_LEADER = false,
+}
+
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -34,11 +48,11 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 			TerribleLuraHelperDB = {
 				listenChannels = {
 					SAY = true,
-					RAID = true,
-					RAID_LEADER = true,
-					RAID_WARNING = true,
-					INSTANCE_CHAT = true,
-					INSTANCE_CHAT_LEADER = true,
+					RAID = false,
+					RAID_LEADER = false,
+					RAID_WARNING = false,
+					INSTANCE_CHAT = false,
+					INSTANCE_CHAT_LEADER = false,
 				},
 				window = {
 					scale = 1.00,
@@ -48,7 +62,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 					alpha = 1.00,
 					visible = false,
 				},
-				macroChannel = "RAID",
+				macroChannel = "SAY",
 			}
 		end
 		ns.db = TerribleLuraHelperDB
@@ -58,9 +72,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 		if not db.listenChannels then
 			db.listenChannels = {}
 		end
-		for _, ch in ipairs({ "SAY", "RAID", "RAID_LEADER", "RAID_WARNING", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER" }) do
+		for ch, default in pairs(LISTEN_DEFAULTS) do
 			if db.listenChannels[ch] == nil then
-				db.listenChannels[ch] = true
+				db.listenChannels[ch] = default
 			end
 		end
 		if not db.window then
@@ -85,7 +99,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 			db.window.visible = false
 		end
 		if db.macroChannel == nil then
-			db.macroChannel = "RAID"
+			db.macroChannel = "SAY"
 		end
 
 		-- Dispatch to per-module init functions (Window + Config; macros

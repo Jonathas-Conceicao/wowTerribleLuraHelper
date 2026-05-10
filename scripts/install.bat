@@ -10,5 +10,7 @@ copy /Y "%SOURCE%Core.lua" "%DEST%\"
 copy /Y "%SOURCE%Macros.lua" "%DEST%\"
 copy /Y "%SOURCE%Window.lua" "%DEST%\"
 copy /Y "%SOURCE%Config.lua" "%DEST%\"
+copy /Y "%SOURCE%templates.xml" "%DEST%\"
+copy /Y "%SOURCE%reference.tga" "%DEST%\"
 
 echo Done! /reload in WoW to load the addon.

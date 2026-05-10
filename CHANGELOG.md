@@ -3,6 +3,22 @@
 <!-- Release entries use the format `## v<version> — <title>` (H2, em-dash separator). -->
 <!-- The GitHub Actions workflow's awk cutoff extracts only the first `## ` section into RELEASE_NOTES.md, so keep this format consistent. -->
 
+## v1.0.0 — Polish + Some small improvements
+
+- **Click-through when locked** — the helper window no longer eats
+  mouse clicks once locked; clicks pass through to action bars or
+  anything else beneath it
+- **Channel set to SAY as defaults for new installs** — macros target
+  `/s` and only the SAY channel is listened to by default; existing
+  users keep their previous choices on upgrade
+- **Cheat-sheet image at the top of the config panel** — rune-symbol
+  reference card shows new users which marker each macro produces
+- **Auto-hide refined to in-combat-only** — out of combat the window
+  stays visible even when empty (so you can see the toggle is on); in
+  combat it hides when empty and reappears on the next marker
+- **Improved Lock/Unlock button labels** — config panel button labels
+  flip immediately when you toggle them
+
 ## v0.1.0 — Initial Release
 
 A helper for the Midnight Falls **L'ura** encounter — one spotter calls the rune sequence and everyone with the addon sees it on a dedicated window, surviving the boss-fight chat lockdown.

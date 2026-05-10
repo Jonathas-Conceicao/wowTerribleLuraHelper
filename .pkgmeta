@@ -14,5 +14,6 @@ ignore:
   - README.md
   - LICENSE
   - scripts
+  - assets
   - "*.png"
   - RELEASE_NOTES.md

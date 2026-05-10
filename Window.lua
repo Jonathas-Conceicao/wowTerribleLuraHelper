@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 -- Window.lua — smile-arc helper window: 5 positional rune slots, BOSS/TANK labels,
 -- lock/unlock, drag-position persistence, 20s self-clear, in-memory sequence.
@@ -50,11 +50,16 @@ local positionApplied = false -- saved position is applied on first show only
 -- Window stays visible (no Hide()) but with alpha=0; chat events stay registered
 -- so the next slot fill can reveal it via applySoftHideState().
 local softHidden = false
+-- Phase 5 / D-01..D-03: combat-state cache. Read by applySoftHideState
+-- (third condition clause). Seeded at frame creation via combat-query API
+-- and updated on every regen-event edge by combatFrame below.
+local inCombat = false
 
 -- Forward declarations so handlers below can call helpers above.
 local win, slotFrames, lockBtn
 local FillSlot, ClearAll, ScheduleClear, ManualClear
 local applyLockState, applySavedPosition, persistPosition, applySoftHideState
+local registerChatEvents, unregisterChatEvents
 
 -- ============================================================
 -- Frame construction (called from ns:InitWindow)
@@ -163,15 +168,39 @@ local function CreateWindow()
 	-- Visibility-driven event gating: open window = process chat,
 	-- closed window = silent. Replaces the combat-only registration model.
 	win:SetScript("OnShow", function()
-		ns:RegisterChatEvents()
+		registerChatEvents()
 	end)
 	win:SetScript("OnHide", function()
-		ns:UnregisterChatEvents()
+		unregisterChatEvents()
 		ManualClear()
 	end)
 
 	-- Apply current locked/unlocked state to drag bindings + button texture.
 	applyLockState()
+
+	-- ============================================================
+	-- Combat-state listener (Phase 5 / D-02, D-03; WIN-13, WIN-14, WIN-15)
+	-- Seeds inCombat at frame-creation time (handles /reload mid-combat where
+	-- the regen-disabled event never fires for an already-in-combat player).
+	-- Then registers a PERMANENT listener on both regen edges — the frame
+	-- never unregisters, unlike Macros.lua's regenFrame (lines 86-98) which
+	-- is a fire-once retry pattern. Both edges flip the cached flag and
+	-- re-evaluate applySoftHideState so the soft-hide reframe responds
+	-- immediately to combat boundaries.
+	-- ============================================================
+	inCombat = InCombatLockdown()
+	-- `local combatFrame` is intentionally discarded after registration —
+	-- the C-level frame and its event registrations survive past this scope
+	-- (CreateFrame returns a Lua handle to a persistent C frame; the GC
+	-- cannot collect it once events are bound). The handle is only needed
+	-- here to call :RegisterEvent / :SetScript.
+	local combatFrame = CreateFrame("Frame")
+	combatFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+	combatFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+	combatFrame:SetScript("OnEvent", function(_, event)
+		inCombat = (event == "PLAYER_REGEN_DISABLED")
+		applySoftHideState()
+	end)
 end
 
 -- ============================================================
@@ -213,6 +242,15 @@ applyLockState = function()
 		win:RegisterForDrag("LeftButton")
 		lockBtn:Show()
 	end
+	win:EnableMouse(not locked)
+	-- Live-refresh the config panel's Lock/Unlock button label. Safe to
+	-- call from any code path (slash command, on-window button, /lura
+	-- toggle dispatcher) — Config.lua's RefreshLockButton early-exits if
+	-- the panel hasn't been opened yet (cachedLockFrame is nil) or if
+	-- the cached frame isn't currently visible.
+	if ns.RefreshLockButton then
+		ns:RefreshLockButton()
+	end
 end
 
 function ns:ToggleLocked()
@@ -226,8 +264,13 @@ end
 -- autoHide=on AND sequence is empty. Chat events stay registered so
 -- the next slot fill reveals the window via FillSlot → applySoftHideState.
 -- ============================================================
+-- SAFE-05: soft-hide MUST use SetAlpha(0) exclusively — NEVER the Hide() method.
+-- Calling Hide() on the frame fires OnHide which calls unregisterChatEvents(),
+-- breaking the AMEND-01 invariant: chat events must stay registered while the
+-- window is shown (even at alpha=0) so the next slot fill can reveal it.
+-- Origin: .planning/archive/v0.1.0/02-poc-port-macros-window-commands/02-VERIFICATION.md (AMEND-01)
 applySoftHideState = function()
-	if ns.db.window.autoHide and #sequence == 0 then
+	if ns.db.window.autoHide and #sequence == 0 and inCombat then
 		softHidden = true
 		win:SetAlpha(0)
 	else
@@ -268,6 +311,30 @@ end
 function ns:UnlockWindow()
 	ns.db.window.locked = false
 	applyLockState()
+end
+
+-- Phase 6 / CFG-13. The Show/Hide button label uses CreateSettingsButtonInitializer's
+-- buttonText closure (Config.lua:201-207) which the framework only re-evaluates when
+-- the panel runs Init for the element. This hook lets visibility-changing call sites
+-- (ShowWindow, HideWindow, RestoreWindowVisibility) tell the framework to re-init
+-- visible elements via SettingsInbound.RepairDisplay, so the label flips live without
+-- the user having to close-and-reopen the panel. The early-exit guard makes this a
+-- no-op when the panel isn't open (the 99.9% case — user is in combat, etc.). Per
+-- D-12: applySoftHideState does NOT call this hook (soft-hide changes alpha only,
+-- IsShown stays true, label is correct without a refresh — engineering-truth model).
+function ns:NotifyWindowVisibilityChanged()
+	-- Delegate to Config.lua's surgical button-text update. The Config.lua
+	-- side captures the rendered frame via hooksecurefunc on
+	-- SettingsButtonControlMixin:Init (gated by a sentinel data flag so
+	-- only OUR Show/Hide button is captured) and calls SetText directly.
+	-- This avoids the panel rebuild that DisplayCategory would do — which
+	-- preserves the user's current scroll position. ns.RefreshShowHideButton
+	-- is set up inside Config.lua's InitConfig deferred load; if the panel
+	-- has never been opened in this session, the cached frame is nil and
+	-- the function is a safe no-op.
+	if ns.RefreshShowHideButton then
+		ns:RefreshShowHideButton()
+	end
 end
 
 -- ============================================================
@@ -351,13 +418,16 @@ chatFrame:SetScript("OnEvent", function(self, event, msg)
 	-- Do NOT call win:Show() here. Visibility is governed by /lura only.
 end)
 
-function ns:RegisterChatEvents()
+-- Internal helpers: callers are limited to Window.lua's own OnShow/OnHide
+-- closures. Exposing them on ns would invite outside-Window.lua code to
+-- bypass the visibility-gating contract (AMEND-01) — kept file-local.
+registerChatEvents = function()
 	for _, ev in ipairs(CHAT_EVENTS) do
 		chatFrame:RegisterEvent(ev)
 	end
 end
 
-function ns:UnregisterChatEvents()
+unregisterChatEvents = function()
 	for _, ev in ipairs(CHAT_EVENTS) do
 		chatFrame:UnregisterEvent(ev)
 	end
@@ -378,11 +448,13 @@ function ns:ShowWindow()
 	win:SetAlpha(ns.db.window.alpha or 1.00)
 	-- Persist visibility so /reload restores the same state.
 	ns.db.window.visible = true
+	ns:NotifyWindowVisibilityChanged()
 end
 
 function ns:HideWindow()
 	win:Hide()
 	ns.db.window.visible = false
+	ns:NotifyWindowVisibilityChanged()
 end
 
 -- Like ShowWindow but respects soft-hide. Used by Core.lua at ADDON_LOADED
@@ -395,6 +467,7 @@ function ns:RestoreWindowVisibility()
 	-- (autoHide=on AND sequence empty → alpha=0, chat still hot).
 	applySoftHideState()
 	-- visible stays true (it already was — that's why we're restoring).
+	ns:NotifyWindowVisibilityChanged()
 end
 
 function ns:IsWindowShown()
