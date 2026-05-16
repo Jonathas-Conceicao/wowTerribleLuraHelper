@@ -14,11 +14,16 @@ local _, ns = ...
 -- represents in-fight; star icon is kept on the macro for action-bar
 -- recognizability. Slot 5 (or wherever T lands in arrival order) renders
 -- the letter T directly via FontString:SetText.
+-- Phase 7 / MACR-06, MACR-07. The four marker rows have BOTH payloadVerbose
+-- and payloadRT; RegisterMacros picks one via db.verboseMarkers. TLH_T uses
+-- a single `payload` field — its rune is the literal letter T (the 5th
+-- L'ura rune), not a marker icon, so no verbose variant exists. The
+-- single-vs-dual-field shape per row self-documents this irregularity.
 local MACROS = {
-	{ name = "TLH_Diamond", payload = "{rt3}", icon = 137003 },
-	{ name = "TLH_Triangle", payload = "{rt4}", icon = 137004 },
-	{ name = "TLH_Circle", payload = "{rt2}", icon = 137002 },
-	{ name = "TLH_Cross", payload = "{rt7}", icon = 137007 },
+	{ name = "TLH_Diamond", payloadVerbose = "{diamond}", payloadRT = "{rt3}", icon = 137003 },
+	{ name = "TLH_Triangle", payloadVerbose = "{triangle}", payloadRT = "{rt4}", icon = 137004 },
+	{ name = "TLH_Circle", payloadVerbose = "{circle}", payloadRT = "{rt2}", icon = 137002 },
+	{ name = "TLH_Cross", payloadVerbose = "{cross}", payloadRT = "{rt7}", icon = 137007 },
 	{ name = "TLH_T", payload = "T", icon = 137001 },
 }
 
@@ -53,7 +58,8 @@ function ns:RegisterMacros()
 	local prefix = CHANNEL_PREFIX[ns.db.macroChannel] or "/raid"
 	local created, updated = 0, 0
 	for _, m in ipairs(MACROS) do
-		local body = prefix .. " " .. m.payload
+		local payload = m.payload or (ns.db.verboseMarkers and m.payloadVerbose or m.payloadRT)
+		local body = prefix .. " " .. payload
 		local idx = GetMacroIndexByName(m.name)
 		if idx == 0 then
 			if CreateMacro(m.name, m.icon, body, false) then
@@ -140,5 +146,26 @@ function ns:OnMacroChannelChanged(value)
 	else
 		ns:RegisterMacros()
 		print("|cffaa44ffTLH|r: Macro target → " .. prefix .. ". Macros updated.")
+	end
+end
+
+-- Phase 7 / CFG-16. The checkbox's SetValueChangedCallback fires this after
+-- the framework has already written db.verboseMarkers = value (Phase 3 /
+-- T-03-02 invariant). We just re-run RegisterMacros, which re-reads
+-- db.verboseMarkers via the payload-selection conditional in the for-loop.
+-- Combat-lockdown deferral routes through the shared regenFrame.
+function ns:OnVerboseMarkersChanged(value)
+	if InCombatLockdown() then
+		ns:RegisterMacros() -- sets registrationDeferred=true via the early-return
+		armRegenRetry()
+		print(
+			string.format(
+				"|cffaa44ffTLH|r: Verbose markers %s. Macros will update when you leave combat.",
+				value and "on" or "off"
+			)
+		)
+	else
+		ns:RegisterMacros()
+		print(string.format("|cffaa44ffTLH|r: Verbose markers %s. Macros updated.", value and "on" or "off"))
 	end
 end

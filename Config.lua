@@ -343,6 +343,36 @@ local function RegisterMacroSection(category, layout, db)
 		)
 	end
 
+	-- (3aa) Verbose-marker toggle — UI-SPEC follow-on / CFG-15.
+	-- Inserted between (3a) channel dropdown and (3b) Recreate button.
+	-- Same Macros section, same Settings.* API as the dropdown above,
+	-- but Boolean+Checkbox instead of String+Dropdown. Bound to top-
+	-- level db.verboseMarkers (NOT db.window or db.macros — see D-07).
+	-- Framework auto-writes db.verboseMarkers BEFORE firing the
+	-- SetValueChangedCallback (Phase 3 / T-03-02 invariant); callback
+	-- only calls ns:OnVerboseMarkersChanged(value) to apply the new
+	-- value live. No sentinel-flag hook needed — checkbox auto-syncs
+	-- via SettingsCheckboxControlMixin:OnSettingValueChanged (RESEARCH Q4).
+	do
+		local setting = Settings.RegisterAddOnSetting(
+			category,
+			"TLH_VERBOSE_MARKERS",
+			"verboseMarkers",
+			db,
+			Settings.VarType.Boolean,
+			"Use verbose markers",
+			false
+		)
+		setting:SetValueChangedCallback(function(_, value)
+			ns:OnVerboseMarkersChanged(value)
+		end)
+		Settings.CreateCheckbox(
+			category,
+			setting,
+			"Switches the four marker macros from {rt2} / {rt3} / {rt4} / {rt7} to {circle} / {diamond} / {triangle} / {cross}. WARNING: verbose names only render on English WoW clients — if anyone in your raid runs a non-English client, leave this OFF. The default {rt#} markers are universal across all locales. The 5th macro (TLH_T) sends the letter T either way."
+		)
+	end
+
 	-- (3b) Recreate / update macros button — UI-SPEC §4.2 / §4.5.3.
 	-- Always print success regardless of the macrosPrintedThisSession flag —
 	-- explicit user action should always confirm (UI-SPEC §4.2 rationale).

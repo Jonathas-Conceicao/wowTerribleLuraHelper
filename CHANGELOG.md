@@ -3,6 +3,19 @@
 <!-- Release entries use the format `## v<version> — <title>` (H2, em-dash separator). -->
 <!-- The GitHub Actions workflow's awk cutoff extracts only the first `## ` section into RELEASE_NOTES.md, so keep this format consistent. -->
 
+## v1.1.0 — QoL Update
+
+- **Auto show/hide for the March of Quel'danas raid** — entering the
+  raid auto-opens the helper window; leaving the raid auto-closes it.
+- **Verbose-marker toggle** — new "Use verbose markers" checkbox in
+  Options > AddOns > TerribleLuraHelper. **Off by default** — the
+  standard `{rt2}` / `{rt3}` / `{rt4}` / `{rt7}` markers are universal
+  across every WoW client locale. Turn it on for `{circle}` /
+  `{diamond}` / `{triangle}` / `{cross}` only if every player in your
+  raid runs the English client and someone can't see rt markers due to
+  other chat addons being incomplete; verbose token names don't expand
+  on non-English clients.
+
 ## v1.0.0 — Polish + Some small improvements
 
 - **Click-through when locked** — the helper window no longer eats

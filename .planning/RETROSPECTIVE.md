@@ -53,6 +53,54 @@
 
 ---
 
+## Milestone: v1.1.0 — QoL Update
+
+**Shipped:** 2026-05-16
+**Phases:** 2 (Phase 7, Phase 8) | **Plans:** 2 | **Sessions:** ~3
+
+### What Was Built
+
+- **Verbose-marker toggle (Phase 7)** — dual-field `MACROS` table + payload-selection conditional in `RegisterMacros`; new `ns:OnVerboseMarkersChanged` callback mirroring `OnMacroChannelChanged`; (3aa) "Use verbose markers" checkbox in the Macros config section; SAFE-06 nil-check backfill in `Core.lua`. Default flipped from initial `true` → `false` during UAT (AMEND-07-01-UAT-01) after localization implication played out — verbose tokens only render on English clients, so universal `{rt#}` becomes the safe default.
+- **Zone-aware auto show/hide (Phase 8)** — permanent `zoneFrame` listener on `PLAYER_ENTERING_WORLD` + `ZONE_CHANGED_NEW_AREA` (Blizzard's `MapTexturePreloader.lua` dual-event pattern); `ns:OnZoneChanged()` handler routing through existing `ns:ShowWindow()` / `ns:HideWindow()`; `LURA_RAID_INSTANCE_ID = 2913` captured live via gated `DEBUG_ZONE_INFO` flag during UAT (two-track placeholder pattern); difficulty-agnostic single scalar covers all 5 Midnight raid difficulties.
+
+### What Worked
+
+- **Two-track placeholder pattern for unknown-at-plan-time constants** — Phase 8 shipped with sentinel `0` + gated debug-print block. UAT captured the live `inst=2913` and a follow-up `fix(08-01)` patched the constant + flipped the debug flag off. Zero regression risk during the placeholder window. Worth keeping in the playbook for any "we don't know this value until we run it" situation (e.g. new raid mapIDs in future expansions, new icon FileDataIDs, etc.).
+- **Combined cross-phase UAT (Block A + B + C in one session)** — Phase 7 shipped code-complete-UAT-deferred; UAT ran as a single 16-checkpoint in-game session at end of milestone. This matches v1.0.0's Phase 5+6 pattern and is now a re-validated, second-occurrence project preference (saved as a memory feedback artifact). Saved at least one context-clearing cycle between phases.
+- **Research-driven architectural pivot** — Phase 8 RESEARCH §Q3 pivoted from CONTEXT D-08's `C_Map.GetBestMapForUnit` proposal to `GetInstanceInfo()` instanceID. Eliminated a potential per-difficulty lookup table; turned a "set" into a scalar. Showed the value of having the researcher revisit foundational architecture decisions even when CONTEXT has a recommendation.
+- **Late-UAT semantic refinement (AMEND-07-01-UAT-01)** — user spotted the localization implication of "verbose ON by default" during real-feel testing and flipped the default. The CONTEXT/RESEARCH framing had treated localization as a tooltip clarification; UAT promoted it to a default-flip. Lesson: research-surfaced caveats deserve a re-read at UAT, not just at plan time.
+- **First-iteration plan-checker passes** for both phases — Phase 7 + Phase 8 both passed verification on first try, no revision loop. Strong CONTEXT.md + RESEARCH.md + PATTERNS.md combination paid off.
+- **Repo-wide grep gates as commit-time invariants** — SAFE-06 grep + taint-regression diff scan + AMEND-01 SetAlpha(0) grep + SCAF-19 localization-safety grep all caught nothing this milestone (good — they're working as intended). The discipline of checking them per commit is what keeps them effective.
+
+### What Was Inefficient
+
+- **Late-UAT default flip required updating multiple docs** — AMEND-07-01-UAT-01 touched Core.lua + Config.lua + PROJECT.md + REQUIREMENTS.md + ROADMAP.md + SUMMARY.md. About 25 minutes of careful doc-updating to keep historical records consistent. Hard to prevent (you can't predict which UAT findings become reframes), but worth noting that semantic reframes during UAT carry a doc-update tail.
+- **autocrlf line-ending warnings cluttered every git status** — the `M Core.lua` / `M Config.lua` after stylua-LF-normalization vs Git-autocrlf-CRLF appeared all session, with zero content delta. Not a real issue but cosmetic noise. Could be settled by setting `.gitattributes` for LF-only on `.lua` files (worth a follow-up cleanup in a future minor milestone).
+- **Two encoding glitches in ROADMAP.md** — mojibake characters (`Ã¢â‚¬â€` instead of em-dashes) survived through several edits because they were committed by Windows tooling at some point in v1.0.0 and propagated. Edit attempts on lines containing mojibake fell back to `sed` (which is byte-level tolerant). Not a milestone blocker but adds friction.
+
+### Patterns Established
+
+- **Two-track placeholder pattern** (sentinel constant + gated debug-print + UAT-driven capture + follow-up patch commit) — formally documented in v1.1.0-ROADMAP.md and PROJECT.md Key Decisions. First use was Phase 8's `LURA_RAID_INSTANCE_ID`. Pattern is now in the playbook.
+- **Semver discipline: minor for features, patch for hotfixes** — formalized as a Key Decision (PROJECT.md) after the in-flight v1.0.1 → v1.1.0 rename when the user pointed out that two new features can't be a patch bump.
+- **Cross-phase UAT batching** — second occurrence (v1.0.0 Phase 5+6, v1.1.0 Phase 7+8). Now a stable project preference and a saved memory feedback artifact.
+- **Locale-safety as a first-class concern** — verbose-token localization gotcha + SCAF-19's no-zone-name-string-matching rule both make "this addon must work for non-English players" a recurring constraint. Worth pre-checking in every CONTEXT for any new feature that touches user-visible strings or zone/instance state.
+
+### Key Lessons
+
+1. **Research-surfaced caveats deserve a re-read at UAT, not just at plan time.** The localization implication of verbose tokens was correctly surfaced by RESEARCH §Q7 and flowed into the tooltip wording. But the default-flip didn't surface until the user saw the actual UAT behavior. Lesson: when research highlights a "this only works under condition X" caveat, the planner should ask: "Is X always true for our users?" If not, the default behavior may need to flip too.
+2. **Two-track placeholder is the right answer when the planner can't know a value.** Better than blocking the plan on research, better than guessing wrong. Sentinel + gated debug + UAT capture + patch commit is a four-step recipe that worked cleanly and would scale to other "we'll find out at runtime" constants (new raid mapIDs, new icon FileDataIDs, future Blizzard ID changes).
+3. **`GetInstanceInfo()` instanceID beats `C_Map.GetBestMapForUnit` uiMapID for difficulty-agnostic raid detection.** Documented in Key Decisions for any future zone-aware features. Concrete because we proved it: single scalar `2913` covers all 5 Midnight raid difficulties.
+4. **Combined cross-phase UAT is now a default expectation, not an exception.** Saves context cycles, surfaces cross-phase interactions earlier (didn't materialize as a problem this milestone, but the pattern is preserved). Memory feedback artifact captures this for future milestones.
+5. **The post-commit cleanup pass discipline (per CLAUDE.md) caught zero issues this milestone** but the discipline itself stays valuable — it keeps each commit small and clean. Zero is the right number for this kind of check most of the time.
+
+### Cost Observations
+
+- Model mix: ~95% Opus 4.7 (1M context), ~5% Sonnet 4.6 (subagent verification passes — pattern-mapper, plan-checker)
+- Sessions: ~3 (new-milestone → plan+execute Phase 7 → plan+execute+UAT Phase 8 + close)
+- Notable: the combined Phase 7+8 UAT session avoided 1-2 context resets vs running per-phase UAT. The late-UAT verbose-default flip added ~25 minutes of doc-update work that wouldn't have been needed if the flip had happened at plan time.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -61,6 +109,7 @@
 |-----------|----------|--------|------------|
 | v0.1.0 | ~10 | 3 | Initial scaffolding, POC port, config panel — establishing patterns from scratch |
 | v1.0.0 | ~5 | 3 | Iteration on shipped foundation; combined-phase UAT; smaller plans per phase |
+| v1.1.0 | ~3 | 2 | Two-track placeholder pattern; research-driven architectural pivot; cross-phase UAT batching as default; semver policy formalized |
 
 ### Cumulative Quality
 
@@ -68,9 +117,12 @@
 |-----------|---------|-------|---------|
 | v0.1.0 | ~1,100 | 4 .lua | First ship; visibility-gated chat events (AMEND-01) load-bearing invariant established |
 | v1.0.0 | ~1,400 | 4 .lua + 1 .xml | +inCombat coupling, +sentinel-flag hook pattern; AMEND-01 still load-bearing |
+| v1.1.0 | ~1,550 | 4 .lua + 1 .xml | +zoneFrame permanent listener, +dual-field MACROS pattern, +two-track placeholder constant; AMEND-01 still load-bearing |
 
 ### Top Lessons (Verified Across Milestones)
 
-1. **Hard taint constraints must be re-checked at every code-path edit** — both milestones had moments where a new feature could have touched `msg` or called `SendChatMessage`; the CLAUDE.md grep gates caught them at PR time.
+1. **Hard taint constraints must be re-checked at every code-path edit** — three milestones in, the CLAUDE.md grep gates have caught zero violations because the discipline is in place. The cost of running them is trivial; the cost of missing a `msg` indexing addition would be the addon silently breaking in boss combat.
 2. **In-game smoke test is the only real test** — there's no test harness for WoW addons. Always run `scripts/install.bat` and `/reload` before declaring a phase verified; user UAT is non-negotiable for any UX change.
 3. **Per-phase SUMMARY.md frontmatter pays for itself at milestone-close** — being able to grep for AMEND-* entries and reconstruct the iteration log is essential for the CHANGELOG and PROJECT.md evolution.
+4. **Cross-phase UAT batching is a stable preference** — v1.0.0 + v1.1.0 both validated; saved memory feedback. When a milestone has multiple small phases that don't depend on each other for code, batch UAT at milestone end.
+5. **Research-surfaced caveats deserve a UAT-time re-read** — v1.1.0's late default flip demonstrated this. Lesson is portable to any future milestone with research that includes "this only works under condition X" findings.

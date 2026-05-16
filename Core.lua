@@ -63,6 +63,7 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 					visible = false,
 				},
 				macroChannel = "SAY",
+				verboseMarkers = false,
 			}
 		end
 		ns.db = TerribleLuraHelperDB
@@ -101,6 +102,9 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 		if db.macroChannel == nil then
 			db.macroChannel = "SAY"
 		end
+		if db.verboseMarkers == nil then
+			db.verboseMarkers = false
+		end
 
 		-- Dispatch to per-module init functions (Window + Config; macros
 		-- run on PLAYER_LOGIN — see top of this handler).
@@ -123,6 +127,82 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
 
 		self:UnregisterEvent("ADDON_LOADED")
 	end
+end)
+
+-- ============================================================
+-- Phase 8 (WIN-16, WIN-17, SCAF-19, SAFE-07) — Zone-aware auto show/hide.
+-- Permanent listener for PLAYER_ENTERING_WORLD + ZONE_CHANGED_NEW_AREA.
+-- Re-evaluates on every fire (no state tracking — :Show/:Hide are
+-- transition-only at the frame level, so redundant calls are free).
+-- ============================================================
+
+-- DEBUG_ZONE_INFO gates a single chat print inside ns:OnZoneChanged that
+-- captures the live instanceID / mapID for the v1.1.0 UAT pass. Default
+-- OFF; flipped true ONLY for the in-game UAT step that captures the M of Q
+-- raid instanceID, then flipped back to false BEFORE the milestone release
+-- tag. Must NEVER ship as true.
+local DEBUG_ZONE_INFO = false
+
+-- LURA_RAID_INSTANCE_ID is the GetInstanceInfo() instanceID (return
+-- position 8) of the March on Quel'Danas raid where L'ura lives. Single
+-- scalar is sufficient — instanceID is shared across all 5 raid
+-- difficulties (LFR / Story / Normal / Heroic / Mythic); difficulty is a
+-- separate axis (difficultyID, return position 3). See RESEARCH.md §Q3.
+--
+-- Captured via DEBUG_ZONE_INFO during v1.1.0 UAT on 2026-05-16: zoning into
+-- LFR March on Quel'Danas produced `inst=2913 map=2534 type=raid`. mapID
+-- (2534) tracks per sub-area and is not the right axis for difficulty-
+-- agnostic auto-toggle; instanceID (2913) is shared across all 5 raid
+-- difficulties and is what we compare against.
+local LURA_RAID_INSTANCE_ID = 2913
+
+-- WIN-16 / WIN-17 / SCAF-19 / SAFE-07. The handler is idempotent: it
+-- queries world state via untainted Blizzard getters (IsInInstance,
+-- GetInstanceInfo) and dispatches to the existing ns:ShowWindow /
+-- ns:HideWindow primitives — the SAME code paths used by /lura show and
+-- /lura hide. Routing through these primitives preserves the AMEND-01
+-- chat-event registration invariant on the zone-leave side: ns:HideWindow
+-- calls win:Hide() which fires OnHide which unregisters CHAT_MSG_* and
+-- wipes the in-memory sequence. NEVER substitute SetAlpha(0) here —
+-- would silently break the invariant. See CLAUDE.md hard constraints.
+function ns:OnZoneChanged()
+	local inInstance, instanceType = IsInInstance()
+	if not inInstance or instanceType ~= "raid" then
+		ns:HideWindow()
+		return
+	end
+	local instanceID = select(8, GetInstanceInfo())
+	if DEBUG_ZONE_INFO then
+		local mapID = C_Map.GetBestMapForUnit("player") or "(nil)"
+		print(
+			string.format(
+				"|cffaa44ffTLH-DEBUG|r zone: inst=%s map=%s type=%s",
+				tostring(instanceID),
+				tostring(mapID),
+				instanceType
+			)
+		)
+	end
+	if instanceID == LURA_RAID_INSTANCE_ID then
+		ns:ShowWindow()
+	else
+		ns:HideWindow()
+	end
+end
+
+-- Permanent listener. Registered once at file scope, never unregisters.
+-- Both events route to the same handler — OnZoneChanged is idempotent
+-- and the negative case (IsInInstance == false) early-returns to
+-- ns:HideWindow() within a couple of Lua ops, so the per-fire cost on
+-- outdoor zone changes is negligible. PLAYER_ENTERING_WORLD covers the
+-- loading-screen cases (initial login, /reload, raid entry/exit) and
+-- ZONE_CHANGED_NEW_AREA covers walk-across-zone-border cases that don't
+-- trigger a loading screen.
+local zoneFrame = CreateFrame("Frame")
+zoneFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+zoneFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+zoneFrame:SetScript("OnEvent", function()
+	ns:OnZoneChanged()
 end)
 
 -- ============================================================
