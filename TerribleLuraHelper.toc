@@ -1,4 +1,4 @@
-## Interface: 120005
+## Interface: 120100
 ## Title: TerribleLuraHelper
 ## Notes: Helper for L'ura raid encounter — surfaces rune sequence in chat and a smile-arc helper window during boss-fight chat lockdown
 ## Author: Jonathas-Conceicao

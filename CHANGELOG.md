@@ -3,6 +3,10 @@
 <!-- Release entries use the format `## v<version> — <title>` (H2, em-dash separator). -->
 <!-- The GitHub Actions workflow's awk cutoff extracts only the first `## ` section into RELEASE_NOTES.md, so keep this format consistent. -->
 
+## v1.1.1 - Version Bump
+
+- Bumped WoW interface version to 12.1 (120100).
+
 ## v1.1.0 — QoL Update
 
 - **Auto show/hide for the March of Quel'danas raid** — entering the
